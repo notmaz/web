@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aether | AI Image Generator</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                    },
+                    colors: {
+                        deep: '#020617',
+                        surface: '#0f172a',
+                        glass: 'rgba(255, 255, 255, 0.05)',
+                        glassBorder: 'rgba(255, 255, 255, 0.1)',
+                        primary: '#6366f1',
+                        secondary: '#d946ef',
+                    },
+                    animation: {
+                        'float': 'float 6s ease-in-out infinite',
+                        'float-delayed': 'float 6s ease-in-out 3s infinite',
+                        'scroll': 'scroll 20s linear infinite',
+                        'spin-slow': 'spin 3s linear infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-20px)' },
+                        },
+                        scroll: {
+                            '0%': { transform: 'translateX(0)' },
+                            '100%': { transform: 'translateX(-100%)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #020617;
+            color: white;
+            overflow-x: hidden;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #020617; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6366f1; 
+        }
+
+        /* Glass Utility */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .glass-card {
+            background: linear-gradient(145deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.3s ease;
+        }
+        
+        .glass-card:hover {
+            border-color: rgba(99, 102, 241, 0.5);
+            box-shadow: 0 0 30px rgba(99, 102, 241, 0.15);
+            transform: translateY(-5px);
+        }
+
+        /* Gradient Text */
+        .text-gradient {
+            background: linear-gradient(to right, #6366f1, #d946ef, #6366f1);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: textShine 4s linear infinite;
+        }
+
+        @keyframes textShine {
+            to { background-position: 200% center; }
+        }
+
+        /* Loading Spinner */
+        .loader {
+            width: 48px;
+            height: 48px;
+            border: 3px solid #FFF;
+            border-radius: 50%;
+            display: inline-block;
+            position: relative;
+            box-sizing: border-box;
+            animation: rotation 1s linear infinite;
+        }
+        .loader::after {
+            content: '';  
+            box-sizing: border-box;
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 3px solid transparent;
+            border-bottom-color: #d946ef;
+        }
+        @keyframes rotation {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .hidden-app {
+            display: none;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+        
+        .visible-app {
+            display: flex;
+            opacity: 1;
+        }
+
+        .masonry-grid {
+            column-count: 3;
+            column-gap: 1.5rem;
+        }
+        @media (max-width: 1024px) { .masonry-grid { column-count: 2; } }
+        @media (max-width: 640px) { .masonry-grid { column-count: 1; } }
+        
+        .masonry-item {
+            break-inside: avoid;
+            margin-bottom: 1.5rem;
+        }
+    </style>
+</head>
+<body class="antialiased selection:bg-primary selection:text-white">
+
+    <!-- ==================== PART 1: LANDING PAGE ==================== -->
+    <div id="landing-page" class="relative w-full overflow-hidden transition-all duration-700">
+        
+        <!-- Background Elements -->
+        <div class="fixed top-0 left-0 w-full h-full pointer-events-none z-0">
+            <div class="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-primary/20 rounded-full blur-[120px] animate-float"></div>
+            <div class="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-secondary/20 rounded-full blur-[120px] animate-float-delayed"></div>
+        </div>
+
+        <!-- Sticky Header -->
+        <nav class="fixed top-0 w-full z-40 glass-panel border-b-0 border-white/5">
+            <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <i class="ph-fill ph-aperture text-3xl text-primary"></i>
+                    <span class="text-2xl font-bold tracking-tight">Aether</span>
+                </div>
+                <div class="hidden md:flex gap-8 text-sm font-medium text-gray-300">
+                    <a href="#features" class="hover:text-white transition-colors">Features</a>
+                    <a href="#gallery" class="hover:text-white transition-colors">Gallery</a>
+                    <a href="#blog" class="hover:text-white transition-colors">Blog</a>
+                </div>
+                <button onclick="toggleApp()" class="px-6 py-2.5 bg-gradient-to-r from-primary to-secondary rounded-full font-semibold text-white shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all transform hover:scale-105">
+                    Start Creating
+                </button>
+            </div>
+        </nav>
+
+        <!-- Hero Section -->
+        <section class="relative pt-40 pb-20 px-6 max-w-7xl mx-auto text-center z-10">
+            <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-card mb-8 text-sm text-gray-300">
+                <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                Powered by Pollinations.ai API
+            </div>
+            
+            <h1 class="text-5xl md:text-7xl font-extrabold mb-6 leading-tight">
+                Turn your words into <br>
+                <span class="text-gradient">Visual Masterpieces</span>
+            </h1>
+            
+            <p class="text-lg md:text-xl text-gray-400 mb-10 max-w-2xl mx-auto">
+                Unleash your creativity with our glassmorphic AI engine. Generate stunning assets, art, and concepts in seconds.
+            </p>
+
+            <div class="flex flex-col sm:flex-row gap-4 justify-center items-center mb-20">
+                <button onclick="toggleApp()" class="px-8 py-4 bg-white text-deep font-bold rounded-full hover:bg-gray-100 transition-all flex items-center gap-2">
+                    <i class="ph-bold ph-magic-wand"></i> Try for Free
+                </button>
+                <a href="#gallery" class="px-8 py-4 glass-card rounded-full font-semibold hover:bg-white/5 transition-all">
+                    Explore Gallery
+                </a>
+            </div>
+
+            <!-- Image Strip Marquee -->
+            <div class="w-full overflow-hidden glass-panel py-4 rounded-2xl border-x-0 border-white/10">
+                <div class="flex animate-scroll w-[200%]">
+                    <!-- Populated via JS for simplicity, or static HTML -->
+                    <div class="flex gap-4 min-w-full px-4" id="marquee-content">
+                        <!-- Images will be injected here -->
+                    </div>
+                    <div class="flex gap-4 min-w-full px-4" id="marquee-content-clone">
+                        <!-- Clone for seamless loop -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Features Grid -->
+        <section id="features" class="py-20 px-6 max-w-7xl mx-auto z-10 relative">
+            <div class="grid md:grid-cols-3 gap-8">
+                <!-- Feature 1 -->
+                <div class="glass-card p-8 rounded-2xl">
+                    <div class="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center text-primary mb-6">
+                        <i class="ph-bold ph-lightning text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Lightning Fast</h3>
+                    <p class="text-gray-400 leading-relaxed">
+                        Generate high-resolution images in seconds using the Turbo model. No waiting queues.
+                    </p>
+                </div>
+                <!-- Feature 2 -->
+                <div class="glass-card p-8 rounded-2xl">
+                    <div class="w-12 h-12 rounded-lg bg-secondary/20 flex items-center justify-center text-secondary mb-6">
+                        <i class="ph-bold ph-paint-brush text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Infinite Styles</h3>
+                    <p class="text-gray-400 leading-relaxed">
+                        From photorealistic cinematic shots to 3D renders and anime. You control the aesthetic.
+                    </p>
+                </div>
+                <!-- Feature 3 -->
+                <div class="glass-card p-8 rounded-2xl">
+                    <div class="w-12 h-12 rounded-lg bg-green-500/20 flex items-center justify-center text-green-400 mb-6">
+                        <i class="ph-bold ph-lock-open text-2xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Open & Free</h3>
+                    <p class="text-gray-400 leading-relaxed">
+                        Built on top of open-source models. No credit card required to start creating art.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Gallery Section -->
+        <section id="gallery" class="py-20 px-6 max-w-7xl mx-auto z-10 relative">
+            <h2 class="text-4xl font-bold mb-12 text-center">Community Creations</h2>
+            <div class="masonry-grid" id="landing-gallery">
+                <!-- Static examples -->
+                <div class="masonry-item relative group overflow-hidden rounded-xl">
+                    <img src="https://image.pollinations.ai/prompt/cyberpunk%20city%20neon%20lights%20rain?width=400&height=600&model=flux" alt="Art" class="w-full h-auto object-cover transform group-hover:scale-110 transition-duration-500 transition-transform">
+                    <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
+                        <p class="text-sm text-gray-200">"Cyberpunk city neon lights rain"</p>
+                    </div>
+                </div>
+                <div class="masonry-item relative group overflow-hidden rounded-xl">
+                    <img src="https://image.pollinations.ai/prompt/cute%203d%20isometric%20island%20forest?width=400&height=400&model=flux" alt="Art" class="w-full h-auto object-cover transform group-hover:scale-110 transition-duration-500 transition-transform">
+                    <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
+                        <p class="text-sm text-gray-200">"Cute 3d isometric island forest"</p>
+                    </div>
+                </div>
+                <div class="masonry-item relative group overflow-hidden rounded-xl">
+                    <img src="https://image.pollinations.ai/prompt/portrait%20of%20a%20futuristic%20warrior%20woman%20gold%20armor?width=400&height=500&model=flux" alt="Art" class="w-full h-auto object-cover transform group-hover:scale-110 transition-duration-500 transition-transform">
+                    <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
+                        <p class="text-sm text-gray-200">"Portrait futuristic warrior"</p>
+                    </div>
+                </div>
+                 <div class="masonry-item relative group overflow-hidden rounded-xl">
+                    <img src="https://image.pollinations.ai/prompt/oil%20painting%20cottage%20flower%20garden?width=400&height=300&model=flux" alt="Art" class="w-full h-auto object-cover transform group-hover:scale-110 transition-duration-500 transition-transform">
+                    <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
+                        <p class="text-sm text-gray-200">"Oil painting cottage"</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Blog Section -->
+        <section id="blog" class="py-20 px-6 max-w-7xl mx-auto z-10 relative border-t border-white/5">
+            <h2 class="text-3xl font-bold mb-10">Latest from the Lab</h2>
+            <div class="grid md:grid-cols-3 gap-8">
+                <!-- Blog Card 1 -->
+                <article class="glass-card rounded-xl overflow-hidden group cursor-pointer">
+                    <div class="h-48 overflow-hidden">
+                        <img src="https://image.pollinations.ai/prompt/digital%20art%20studio?width=600&height=400" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                    </div>
+                    <div class="p-6">
+                        <div class="text-xs text-primary mb-2">Tutorial • 5 min read</div>
+                        <h4 class="text-lg font-bold mb-2">Mastering Prompt Engineering</h4>
+                        <p class="text-sm text-gray-400 mb-4">Learn the secret keywords that turn average generations into masterpieces.</p>
+                        <span class="text-sm font-semibold flex items-center gap-1 group-hover:text-primary transition-colors">Read More <i class="ph-bold ph-arrow-right"></i></span>
+                    </div>
+                </article>
+                 <!-- Blog Card 2 -->
+                <article class="glass-card rounded-xl overflow-hidden group cursor-pointer">
+                    <div class="h-48 overflow-hidden">
+                        <img src="https://image.pollinations.ai/prompt/abstract%20network%20connection?width=600&height=400" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                    </div>
+                    <div class="p-6">
+                        <div class="text-xs text-secondary mb-2">Tech • 3 min read</div>
+                        <h4 class="text-lg font-bold mb-2">How Diffusion Models Work</h4>
+                        <p class="text-sm text-gray-400 mb-4">A simple breakdown of the mathematics behind the magic of AI art.</p>
+                        <span class="text-sm font-semibold flex items-center gap-1 group-hover:text-secondary transition-colors">Read More <i class="ph-bold ph-arrow-right"></i></span>
+                    </div>
+                </article>
+                 <!-- Blog Card 3 -->
+                <article class="glass-card rounded-xl overflow-hidden group cursor-pointer">
+                    <div class="h-48 overflow-hidden">
+                        <img src="https://image.pollinations.ai/prompt/robot%20painting%20canvas?width=600&height=400" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
+                    </div>
+                    <div class="p-6">
+                        <div class="text-xs text-green-400 mb-2">News • 2 min read</div>
+                        <h4 class="text-lg font-bold mb-2">The Future of AI Copyright</h4>
+                        <p class="text-sm text-gray-400 mb-4">What you need to know about ownership of AI-generated assets in 2026.</p>
+                        <span class="text-sm font-semibold flex items-center gap-1 group-hover:text-green-400 transition-colors">Read More <i class="ph-bold ph-arrow-right"></i></span>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <!-- Trust / API Code Section -->
+        <section class="py-20 px-6 max-w-4xl mx-auto z-10 relative">
+            <div class="glass-panel p-8 rounded-2xl border border-white/10">
+                <div class="flex flex-col md:flex-row items-center gap-8">
+                    <div class="flex-1">
+                        <h3 class="text-2xl font-bold mb-4">Developers, we got you.</h3>
+                        <p class="text-gray-400 mb-6">Integrate our engine directly into your apps using the simple URL-based API.</p>
+                        <a href="#" class="text-primary hover:text-white transition-colors underline decoration-primary underline-offset-4">Read Documentation</a>
+                    </div>
+                    <div class="flex-1 w-full">
+                        <div class="bg-black/50 rounded-lg p-4 font-mono text-xs overflow-x-auto border border-white/5">
+                            <div class="flex gap-1.5 mb-3">
+                                <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                                <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                                <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                            </div>
+                            <p class="text-gray-500">// GET Request</p>
+                            <p class="text-blue-400">https://image.pollinations.ai/prompt/<span class="text-orange-400">{prompt}</span>?</p>
+                            <p class="pl-4 text-green-400">width=1024&height=1024</p>
+                            <p class="pl-4 text-green-400">&seed=42&model=flux</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Mega Footer -->
+        <footer class="glass-panel mt-20 border-t border-white/10 pt-16 pb-8">
+            <div class="max-w-7xl mx-auto px-6">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
+                    <div class="col-span-1 md:col-span-1">
+                        <div class="flex items-center gap-2 mb-4">
+                            <i class="ph-fill ph-aperture text-3xl text-primary"></i>
+                            <span class="text-2xl font-bold">Aether</span>
+                        </div>
+                        <p class="text-gray-400 text-sm">Design, generate, and inspire with the next generation of AI tools.</p>
+                    </div>
+                    <div>
+                        <h4 class="font-bold mb-4">Product</h4>
+                        <ul class="space-y-2 text-sm text-gray-400">
+                            <li><a href="#" class="hover:text-primary">Pricing</a></li>
+                            <li><a href="#" class="hover:text-primary">API</a></li>
+                            <li><a href="#" class="hover:text-primary">Showcase</a></li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="font-bold mb-4">Company</h4>
+                        <ul class="space-y-2 text-sm text-gray-400">
+                            <li><a href="#" class="hover:text-primary">About</a></li>
+                            <li><a href="#" class="hover:text-primary">Blog</a></li>
+                            <li><a href="#" class="hover:text-primary">Careers</a></li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="font-bold mb-4">Stay Updated</h4>
+                        <div class="flex gap-2">
+                            <input type="email" placeholder="Enter email" class="bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary w-full">
+                            <button class="bg-primary hover:bg-primary/80 px-3 rounded-lg text-white"><i class="ph-bold ph-paper-plane-right"></i></button>
+                        </div>
+                    </div>
+                </div>
+                <div class="border-t border-white/5 pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-gray-500">
+                    <p>&copy; 2026 Aether AI. All rights reserved.</p>
+                    <div class="flex gap-4 mt-4 md:mt-0">
+                        <a href="#" class="hover:text-white"><i class="ph-fill ph-twitter-logo text-lg"></i></a>
+                        <a href="#" class="hover:text-white"><i class="ph-fill ph-discord-logo text-lg"></i></a>
+                        <a href="#" class="hover:text-white"><i class="ph-fill ph-github-logo text-lg"></i></a>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- ==================== PART 2: WEB APP INTERFACE ==================== -->
+    <div id="app-interface" class="hidden-app fixed inset-0 z-50 bg-[#020617] text-white flex flex-col md:flex-row h-screen w-screen overflow-hidden">
+        
+        <!-- Sidebar -->
+        <aside class="w-full md:w-80 glass-panel border-r border-white/10 flex flex-col h-full z-20 transition-transform transform md:translate-x-0">
+            <!-- App Header -->
+            <div class="p-6 border-b border-white/10 flex justify-between items-center">
+                <div class="flex items-center gap-2 cursor-pointer" onclick="toggleApp()">
+                    <i class="ph-bold ph-arrow-left text-gray-400 hover:text-white"></i>
+                    <span class="font-bold text-lg">Back Home</span>
+                </div>
+            </div>
+
+            <!-- Settings Scroll Area -->
+            <div class="flex-1 overflow-y-auto p-6 space-y-6">
+                
+                <!-- Aspect Ratio -->
+                <div>
+                    <label class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 block">Aspect Ratio</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button class="ratio-btn bg-white/10 border border-white/10 rounded-lg p-2 hover:bg-white/20 transition active-ratio" data-w="1024" data-h="1024">
+                            <div class="w-4 h-4 border-2 border-current mx-auto mb-1 rounded-sm"></div>
+                            <span class="text-[10px] block text-center">1:1</span>
+                        </button>
+                        <button class="ratio-btn bg-transparent border border-white/10 rounded-lg p-2 hover:bg-white/10 transition" data-w="1280" data-h="720">
+                            <div class="w-6 h-3 border-2 border-current mx-auto mb-2 rounded-sm mt-1"></div>
+                            <span class="text-[10px] block text-center">16:9</span>
+                        </button>
+                        <button class="ratio-btn bg-transparent border border-white/10 rounded-lg p-2 hover:bg-white/10 transition" data-w="720" data-h="1280">
+                            <div class="w-3 h-6 border-2 border-current mx-auto mb-1 rounded-sm"></div>
+                            <span class="text-[10px] block text-center">9:16</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Style -->
+                <div>
+                    <label class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 block">Style Filter</label>
+                    <select id="styleSelect" class="w-full bg-black/30 border border-white/10 rounded-lg p-3 text-sm focus:outline-none focus:border-primary text-gray-200">
+                        <option value="">No Filter (Raw)</option>
+                        <option value="cinematic lighting, hyperrealistic, 8k, highly detailed">Cinematic</option>
+                        <option value="anime style, studio ghibli, vibrant colors">Anime</option>
+                        <option value="3d render, unreal engine 5, octane render, isometric">3D Render</option>
+                        <option value="cyberpunk, neon lights, futuristic, dark atmosphere">Cyberpunk</option>
+                        <option value="oil painting, textured, impressionist, van gogh style">Oil Painting</option>
+                        <option value="vaporwave, aesthetic, pink and blue, retro 80s">Vaporwave</option>
+                    </select>
+                </div>
+
+                <!-- Advanced Params -->
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 block">Model</label>
+                        <div class="flex bg-black/30 p-1 rounded-lg border border-white/10">
+                            <button class="flex-1 py-1.5 text-xs rounded-md bg-white/10 font-medium transition" id="modelFlux">Flux</button>
+                            <button class="flex-1 py-1.5 text-xs rounded-md text-gray-400 hover:text-white transition" id="modelTurbo">Turbo</button>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2 block">Seed (Optional)</label>
+                        <input type="number" id="seedInput" placeholder="Random" class="w-full bg-black/30 border border-white/10 rounded-lg p-2 text-sm focus:outline-none focus:border-primary">
+                    </div>
+                </div>
+
+                <!-- History -->
+                <div class="pt-4 border-t border-white/10">
+                    <label class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 block">History</label>
+                    <div class="grid grid-cols-2 gap-2" id="historyGrid">
+                        <!-- History items injected by JS -->
+                        <p class="text-xs text-gray-500 col-span-2">No history yet.</p>
+                    </div>
+                    <button onclick="clearHistory()" class="mt-4 text-xs text-red-400 hover:text-red-300 w-full text-center">Clear History</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Canvas Area -->
+        <main class="flex-1 relative bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-fixed flex flex-col items-center justify-center p-4 md:p-10">
+            <!-- Floating Background Blobs for the app -->
+            <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-[100px] pointer-events-none"></div>
+            
+            <!-- Image Container -->
+            <div class="relative group w-full max-w-[80vh] aspect-square flex items-center justify-center rounded-2xl overflow-hidden glass-card shadow-2xl transition-all duration-500" id="imageContainer">
+                
+                <!-- Placeholder State -->
+                <div id="placeholderState" class="text-center p-10">
+                    <div class="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4 border border-white/10 animate-float">
+                        <i class="ph-duotone ph-image text-4xl text-gray-400"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-300">Ready to Create</h3>
+                    <p class="text-sm text-gray-500 mt-2">Enter your prompt below to start.</p>
+                </div>
+
+                <!-- Loading State -->
+                <div id="loadingState" class="hidden absolute inset-0 z-20 bg-black/60 backdrop-blur-md flex-col items-center justify-center">
+                    <span class="loader mb-4"></span>
+                    <p class="text-sm font-medium tracking-widest uppercase animate-pulse">Dreaming...</p>
+                </div>
+
+                <!-- Result Image -->
+                <img id="resultImage" src="" class="hidden w-full h-full object-contain z-10" alt="Generated AI Art">
+                
+                <!-- Overlay Actions (Hover) -->
+                <div id="imageOverlay" class="absolute inset-0 z-30 bg-gradient-to-t from-black/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-6 pointer-events-none group-hover:pointer-events-auto">
+                    <div class="flex gap-3 justify-center">
+                        <button onclick="downloadImage()" class="px-4 py-2 bg-white text-black rounded-lg font-bold text-sm hover:bg-gray-200 transition flex items-center gap-2">
+                            <i class="ph-bold ph-download-simple"></i> Download
+                        </button>
+                        <button onclick="shareImage()" class="px-4 py-2 bg-white/10 backdrop-blur text-white border border-white/20 rounded-lg font-bold text-sm hover:bg-white/20 transition flex items-center gap-2">
+                            <i class="ph-bold ph-share-network"></i> Copy Link
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Fixed Input Bar -->
+        <div class="absolute bottom-6 left-0 md:left-80 right-0 px-4 md:px-10 z-40 flex justify-center">
+            <div class="w-full max-w-3xl glass-panel rounded-2xl p-2 flex items-center gap-2 shadow-2xl border border-primary/20">
+                
+                <button onclick="magicEnhance()" class="p-3 text-secondary hover:bg-secondary/10 rounded-xl transition tooltip-trigger relative group" title="Magic Enhance">
+                    <i class="ph-fill ph-sparkle text-xl"></i>
+                    <!-- Tooltip -->
+                    <span class="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-black text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap pointer-events-none">Enhance Prompt</span>
+                </button>
+
+                <input type="text" id="promptInput" placeholder="Describe what you want to see..." class="flex-1 bg-transparent border-none focus:ring-0 text-white placeholder-gray-500 h-10 px-2" autocomplete="off">
+
+                <button id="generateBtn" class="px-6 py-3 bg-gradient-to-r from-primary to-secondary rounded-xl text-white font-bold shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:scale-105 transition-all flex items-center gap-2">
+                    <span>Generate</span>
+                    <i class="ph-bold ph-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // --- Configuration & State ---
+        const config = {
+            baseUrl: "https://image.pollinations.ai/prompt/",
+            activeModel: "flux",
+            width: 1024,
+            height: 1024
+        };
+
+        const state = {
+            isLoading: false,
+            history: JSON.parse(localStorage.getItem('aether_history')) || []
+        };
+
+        // --- DOM Elements ---
+        const els = {
+            landing: document.getElementById('landing-page'),
+            app: document.getElementById('app-interface'),
+            promptInput: document.getElementById('promptInput'),
+            generateBtn: document.getElementById('generateBtn'),
+            resultImage: document.getElementById('resultImage'),
+            placeholder: document.getElementById('placeholderState'),
+            loader: document.getElementById('loadingState'),
+            ratioBtns: document.querySelectorAll('.ratio-btn'),
+            styleSelect: document.getElementById('styleSelect'),
+            seedInput: document.getElementById('seedInput'),
+            modelFlux: document.getElementById('modelFlux'),
+            modelTurbo: document.getElementById('modelTurbo'),
+            historyGrid: document.getElementById('historyGrid'),
+            marquee: document.getElementById('marquee-content'),
+            marqueeClone: document.getElementById('marquee-content-clone'),
+            imageContainer: document.getElementById('imageContainer')
+        };
+
+        // --- Initialization ---
+        window.addEventListener('DOMContentLoaded', () => {
+            renderHistory();
+            populateMarquee();
+        });
+
+        // --- Navigation Logic ---
+        function toggleApp() {
+            const isAppHidden = els.app.classList.contains('hidden-app');
+            
+            if (isAppHidden) {
+                // Show App
+                els.app.classList.remove('hidden-app');
+                els.app.classList.add('visible-app');
+                els.landing.style.transform = "scale(0.95)";
+                els.landing.style.opacity = "0";
+                setTimeout(() => els.landing.style.display = 'none', 500);
+            } else {
+                // Hide App
+                els.landing.style.display = 'block';
+                // small delay to allow display block to apply before opacity transition
+                requestAnimationFrame(() => {
+                    els.landing.style.transform = "scale(1)";
+                    els.landing.style.opacity = "1";
+                });
+                els.app.classList.remove('visible-app');
+                els.app.classList.add('hidden-app');
+            }
+        }
+
+        // --- Generation Logic ---
+        els.generateBtn.addEventListener('click', generateImage);
+        els.promptInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') generateImage();
+        });
+
+        async function generateImage() {
+            const rawPrompt = els.promptInput.value.trim();
+            if (!rawPrompt) return;
+            
+            if (state.isLoading) return;
+            setLoading(true);
+
+            // Construct Prompt with Style
+            const style = els.styleSelect.value;
+            const fullPrompt = style ? `${rawPrompt}, ${style}` : rawPrompt;
+            
+            // Params
+            const seed = els.seedInput.value || Math.floor(Math.random() * 10000);
+            const encodedPrompt = encodeURIComponent(fullPrompt);
+            const url = `${config.baseUrl}${encodedPrompt}?width=${config.width}&height=${config.height}&seed=${seed}&model=${config.activeModel}&nologo=true`;
+
+            // Image Loading
+            const img = new Image();
+            img.src = url;
+            
+            img.onload = () => {
+                els.resultImage.src = url;
+                els.resultImage.classList.remove('hidden');
+                els.placeholder.classList.add('hidden');
+                
+                // Adjust container aspect ratio
+                els.imageContainer.style.aspectRatio = `${config.width}/${config.height}`;
+
+                saveToHistory(url, rawPrompt);
+                setLoading(false);
+            };
+
+            img.onerror = () => {
+                alert("Failed to generate image. Please try again.");
+                setLoading(false);
+            };
+        }
+
+        function setLoading(bool) {
+            state.isLoading = bool;
+            if (bool) {
+                els.loader.classList.remove('hidden');
+                els.loader.classList.add('flex');
+                els.generateBtn.disabled = true;
+                els.generateBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                els.generateBtn.innerHTML = `<span class="loader !w-4 !h-4 !border-2"></span> Generating...`;
+            } else {
+                els.loader.classList.add('hidden');
+                els.loader.classList.remove('flex');
+                els.generateBtn.disabled = false;
+                els.generateBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                els.generateBtn.innerHTML = `<span>Generate</span><i class="ph-bold ph-arrow-right"></i>`;
+            }
+        }
+
+        // --- Features Logic ---
+        
+        // Ratio Switcher
+        els.ratioBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                // UI Update
+                els.ratioBtns.forEach(b => {
+                    b.classList.remove('bg-white/10', 'active-ratio');
+                    b.classList.add('bg-transparent');
+                    b.querySelector('div').classList.remove('border-primary'); // removing highlight
+                });
+                btn.classList.remove('bg-transparent');
+                btn.classList.add('bg-white/10', 'active-ratio');
+                
+                // Config Update
+                config.width = btn.dataset.w;
+                config.height = btn.dataset.h;
+            });
+        });
+
+        // Model Switcher
+        els.modelFlux.addEventListener('click', () => setModel('flux'));
+        els.modelTurbo.addEventListener('click', () => setModel('turbo'));
+
+        function setModel(model) {
+            config.activeModel = model;
+            if (model === 'flux') {
+                els.modelFlux.classList.replace('text-gray-400', 'text-white');
+                els.modelFlux.classList.add('bg-white/10');
+                els.modelTurbo.classList.replace('text-white', 'text-gray-400');
+                els.modelTurbo.classList.remove('bg-white/10');
+            } else {
+                els.modelTurbo.classList.replace('text-gray-400', 'text-white');
+                els.modelTurbo.classList.add('bg-white/10');
+                els.modelFlux.classList.replace('text-white', 'text-gray-400');
+                els.modelFlux.classList.remove('bg-white/10');
+            }
+        }
+
+        // Magic Enhance
+        const magicKeywords = [
+            "masterpiece", "best quality", "8k resolution", "highly detailed", 
+            "sharp focus", "cinematic lighting", "ray tracing", "HDR"
+        ];
+        
+        function magicEnhance() {
+            const current = els.promptInput.value;
+            if (!current) return;
+            
+            // Add 3 random magic keywords
+            const shuffled = magicKeywords.sort(() => 0.5 - Math.random());
+            const additions = shuffled.slice(0, 3).join(", ");
+            
+            els.promptInput.value = `${current}, ${additions}`;
+            
+            // Visual feedback
+            const btn = document.querySelector('.ph-sparkle').parentElement;
+            btn.classList.add('text-yellow-400');
+            setTimeout(() => btn.classList.remove('text-yellow-400'), 500);
+        }
+
+        // --- History System ---
+        function saveToHistory(url, prompt) {
+            // Unshift to add to beginning
+            state.history.unshift({ url, prompt });
+            // Limit to 20 items
+            if (state.history.length > 20) state.history.pop();
+            
+            localStorage.setItem('aether_history', JSON.stringify(state.history));
+            renderHistory();
+        }
+
+        function renderHistory() {
+            els.historyGrid.innerHTML = '';
+            
+            if (state.history.length === 0) {
+                els.historyGrid.innerHTML = '<p class="text-xs text-gray-500 col-span-2">No history yet.</p>';
+                return;
+            }
+
+            state.history.forEach((item) => {
+                const div = document.createElement('div');
+                div.className = 'aspect-square rounded-lg overflow-hidden relative group cursor-pointer border border-white/5';
+                div.innerHTML = `
+                    <img src="${item.url}" class="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition" loading="lazy">
+                `;
+                div.onclick = () => {
+                    els.resultImage.src = item.url;
+                    els.resultImage.classList.remove('hidden');
+                    els.placeholder.classList.add('hidden');
+                    els.promptInput.value = item.prompt;
+                };
+                els.historyGrid.appendChild(div);
+            });
+        }
+
+        function clearHistory() {
+            state.history = [];
+            localStorage.removeItem('aether_history');
+            renderHistory();
+        }
+
+        // --- Download & Share ---
+        async function downloadImage() {
+            const src = els.resultImage.src;
+            if (!src) return;
+
+            try {
+                // Fetch blob to force download instead of open in new tab
+                const response = await fetch(src);
+                const blob = await response.blob();
+                const blobUrl = URL.createObjectURL(blob);
+                
+                const link = document.createElement('a');
+                link.href = blobUrl;
+                link.download = `aether-${Date.now()}.png`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(blobUrl);
+            } catch (e) {
+                console.error("Download failed, falling back to link", e);
+                window.open(src, '_blank');
+            }
+        }
+
+        function shareImage() {
+            const src = els.resultImage.src;
+            if (!src) return;
+            navigator.clipboard.writeText(src).then(() => {
+                alert("Image URL copied to clipboard!");
+            });
+        }
+
+        // --- Landing Page Marquee Populator ---
+        function populateMarquee() {
+            const images = [
+                'cyberpunk city', 'isometric forest', 'astronaut flower', 
+                'neon tiger', 'steampunk robot', 'watercolor landscape'
+            ];
+            
+            const createImg = (keyword) => {
+                const div = document.createElement('div');
+                div.className = "w-64 h-40 flex-shrink-0 rounded-lg overflow-hidden relative";
+                // Using small static dimensions for the strip to load fast
+                div.innerHTML = `<img src="https://image.pollinations.ai/prompt/${keyword}?width=256&height=160&model=turbo" class="w-full h-full object-cover">`;
+                return div;
+            }
+
+            images.forEach(key => {
+                els.marquee.appendChild(createImg(key));
+                els.marqueeClone.appendChild(createImg(key));
+            });
+        }
+
+    </script>
+</body>
+</html>
