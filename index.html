@@ -1,0 +1,1647 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Studio Maz - AI Image Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        background: '#020617',
+                        surface: '#0f172a',
+                        primary: '#6366f1',
+                        secondary: '#d946ef',
+                    },
+                    fontFamily: {
+                        jakarta: ['Plus Jakarta Sans', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            scroll-behavior: smooth;
+        }
+        
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: #020617;
+            color: #e2e8f0;
+            overflow-x: hidden;
+        }
+        
+        /* Glassmorphism */
+        .glass {
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .glass-light {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Gradient Text */
+        .gradient-text {
+            background: linear-gradient(135deg, #6366f1 0%, #d946ef 50%, #6366f1 100%);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: shimmer 3s linear infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { background-position: 0% center; }
+            100% { background-position: 200% center; }
+        }
+        
+        /* Gradient Button */
+        .gradient-btn {
+            background: linear-gradient(135deg, #6366f1 0%, #d946ef 100%);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .gradient-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s ease;
+        }
+        
+        .gradient-btn:hover::before {
+            left: 100%;
+        }
+        
+        .gradient-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 20px 40px -10px rgba(99, 102, 241, 0.5);
+        }
+        
+        /* Floating Animation */
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(5deg); }
+        }
+        
+        @keyframes float-reverse {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(20px) rotate(-5deg); }
+        }
+        
+        .float { animation: float 6s ease-in-out infinite; }
+        .float-reverse { animation: float-reverse 8s ease-in-out infinite; }
+        .float-slow { animation: float 10s ease-in-out infinite; }
+        
+        /* Glow Effects */
+        .glow-primary {
+            box-shadow: 0 0 60px rgba(99, 102, 241, 0.3);
+        }
+        
+        .glow-secondary {
+            box-shadow: 0 0 60px rgba(217, 70, 239, 0.3);
+        }
+        
+        /* Scrolling Strip */
+        @keyframes scroll-left {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+        
+        .scroll-strip {
+            animation: scroll-left 30s linear infinite;
+        }
+        
+        .scroll-strip:hover {
+            animation-play-state: paused;
+        }
+        
+        /* Fade In Animation */
+        .fade-in {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.6s ease, transform 0.6s ease;
+        }
+        
+        .fade-in.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #6366f1, #d946ef);
+            border-radius: 4px;
+        }
+        
+        /* Loading Spinner */
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(99, 102, 241, 0.2);
+            border-top-color: #6366f1;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Pulse Animation */
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(99, 102, 241, 0.5); }
+            50% { box-shadow: 0 0 40px rgba(217, 70, 239, 0.8); }
+        }
+        
+        .pulse-glow {
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+        
+        /* Image Hover Effect */
+        .image-card {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .image-card:hover {
+            transform: scale(1.05) translateY(-10px);
+        }
+        
+        .image-card:hover .image-overlay {
+            opacity: 1;
+        }
+        
+        .image-overlay {
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        /* Mobile Menu */
+        .mobile-menu {
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+        }
+        
+        .mobile-menu.open {
+            transform: translateX(0);
+        }
+        
+        /* App Transition */
+        .app-container {
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+        }
+        
+        .app-container.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .landing-container {
+            transition: opacity 0.5s ease;
+        }
+        
+        .landing-container.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        /* History Grid */
+        .history-item {
+            transition: all 0.3s ease;
+        }
+        
+        .history-item:hover {
+            transform: scale(1.1);
+            z-index: 10;
+        }
+        
+        /* Input Focus */
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #6366f1;
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+        }
+        
+        /* Masonry Grid */
+        .masonry-grid {
+            columns: 3;
+            column-gap: 1.5rem;
+        }
+        
+        @media (max-width: 1024px) {
+            .masonry-grid { columns: 2; }
+        }
+        
+        @media (max-width: 640px) {
+            .masonry-grid { columns: 1; }
+        }
+        
+        .masonry-item {
+            break-inside: avoid;
+            margin-bottom: 1.5rem;
+        }
+        
+        /* Tooltip */
+        .tooltip {
+            position: relative;
+        }
+        
+        .tooltip::after {
+            content: attr(data-tip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%) translateY(10px);
+            padding: 0.5rem 1rem;
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 0.5rem;
+            font-size: 0.75rem;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .tooltip:hover::after {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(-5px);
+        }
+
+        /* Rate Limit Banner */
+        .rate-limit-banner {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(217, 70, 239, 0.2));
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <!-- ========== LANDING PAGE ========== -->
+    <div id="landing" class="landing-container">
+        <!-- Floating Background Elements -->
+        <div class="fixed inset-0 overflow-hidden pointer-events-none z-0">
+            <div class="absolute top-20 left-10 w-72 h-72 bg-primary/20 rounded-full blur-[100px] float"></div>
+            <div class="absolute bottom-40 right-20 w-96 h-96 bg-secondary/20 rounded-full blur-[120px] float-reverse"></div>
+            <div class="absolute top-1/2 left-1/2 w-80 h-80 bg-primary/10 rounded-full blur-[80px] float-slow"></div>
+        </div>
+        
+        <!-- Floating 3D Icons -->
+        <div class="fixed inset-0 overflow-hidden pointer-events-none z-0">
+            <i class="ph-fill ph-cube text-6xl text-primary/20 absolute top-32 left-[15%] float"></i>
+            <i class="ph-fill ph-diamond text-5xl text-secondary/20 absolute top-48 right-[20%] float-reverse"></i>
+            <i class="ph-fill ph-atom text-7xl text-primary/15 absolute bottom-32 left-[25%] float-slow"></i>
+            <i class="ph-fill ph-star-four text-4xl text-secondary/25 absolute top-[60%] right-[10%] float"></i>
+            <i class="ph-fill ph-sparkle text-5xl text-primary/20 absolute bottom-48 right-[30%] float-reverse"></i>
+            <i class="ph-fill ph-lightning text-6xl text-secondary/15 absolute top-[40%] left-[5%] float-slow"></i>
+        </div>
+        
+        <!-- ===== HEADER ===== -->
+        <header class="fixed top-0 left-0 right-0 z-50 glass">
+            <div class="max-w-7xl mx-auto px-6 py-4">
+                <nav class="flex items-center justify-between">
+                    <!-- Logo -->
+                    <a href="#" class="flex items-center gap-3 group">
+                        <div class="w-10 h-10 rounded-xl gradient-btn flex items-center justify-center">
+                            <i class="ph-fill ph-magic-wand text-white text-xl"></i>
+                        </div>
+                        <span class="text-xl font-bold gradient-text">Studio Maz</span>
+                    </a>
+                    
+                    <!-- Desktop Nav -->
+                    <div class="hidden md:flex items-center gap-8">
+                        <a href="#features" class="text-gray-400 hover:text-white transition-colors">Features</a>
+                        <a href="#gallery" class="text-gray-400 hover:text-white transition-colors">Gallery</a>
+                        <a href="#blog" class="text-gray-400 hover:text-white transition-colors">Blog</a>
+                        <a href="#about" class="text-gray-400 hover:text-white transition-colors">About</a>
+                    </div>
+                    
+                    <!-- CTA Button -->
+                    <button onclick="openApp()" class="hidden md:flex gradient-btn px-6 py-2.5 rounded-full font-semibold text-white items-center gap-2">
+                        <i class="ph-fill ph-sparkle"></i>
+                        Start Creating
+                    </button>
+                    
+                    <!-- Mobile Menu Button -->
+                    <button onclick="toggleMobileMenu()" class="md:hidden p-2 text-white">
+                        <i class="ph ph-list text-2xl" id="menuIcon"></i>
+                    </button>
+                </nav>
+            </div>
+            
+            <!-- Mobile Menu -->
+            <div id="mobileMenu" class="mobile-menu fixed top-0 right-0 w-72 h-screen glass-light md:hidden z-50">
+                <div class="p-6">
+                    <button onclick="toggleMobileMenu()" class="absolute top-4 right-4 p-2 text-white">
+                        <i class="ph ph-x text-2xl"></i>
+                    </button>
+                    <div class="flex flex-col gap-6 mt-12">
+                        <a href="#features" class="text-lg text-gray-300 hover:text-white transition-colors">Features</a>
+                        <a href="#gallery" class="text-lg text-gray-300 hover:text-white transition-colors">Gallery</a>
+                        <a href="#blog" class="text-lg text-gray-300 hover:text-white transition-colors">Blog</a>
+                        <a href="#about" class="text-lg text-gray-300 hover:text-white transition-colors">About</a>
+                        <button onclick="openApp(); toggleMobileMenu();" class="gradient-btn px-6 py-3 rounded-full font-semibold text-white mt-4">
+                            Start Creating
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+        
+        <!-- ===== HERO SECTION ===== -->
+        <section class="min-h-screen flex flex-col items-center justify-center relative pt-20 px-6">
+            <div class="text-center max-w-5xl mx-auto relative z-10">
+                <div class="inline-flex items-center gap-2 glass-light px-4 py-2 rounded-full mb-8 fade-in">
+                    <i class="ph-fill ph-rocket text-primary"></i>
+                    <span class="text-sm text-gray-300">Powered by Advanced AI Models</span>
+                </div>
+                
+                <h1 class="text-5xl md:text-7xl lg:text-8xl font-extrabold mb-6 leading-tight fade-in">
+                    Transform Ideas into
+                    <span class="gradient-text block">Stunning Visuals</span>
+                </h1>
+                
+                <p class="text-xl md:text-2xl text-gray-400 max-w-3xl mx-auto mb-10 fade-in">
+                    Create breathtaking AI-generated images in seconds. Just describe your vision, and watch the magic unfold.
+                </p>
+                
+                <div class="flex flex-col sm:flex-row items-center justify-center gap-4 fade-in">
+                    <button onclick="openApp()" class="gradient-btn px-8 py-4 rounded-full font-bold text-white text-lg flex items-center gap-3 pulse-glow">
+                        <i class="ph-fill ph-magic-wand text-xl"></i>
+                        Start Creating Free
+                    </button>
+                    <a href="#gallery" class="glass-light px-8 py-4 rounded-full font-semibold text-white flex items-center gap-3 hover:bg-white/10 transition-colors">
+                        <i class="ph-fill ph-play text-xl"></i>
+                        View Gallery
+                    </a>
+                </div>
+                
+                <!-- Stats -->
+                <div class="flex flex-wrap items-center justify-center gap-8 mt-16 fade-in">
+                    <div class="text-center">
+                        <div class="text-3xl font-bold gradient-text">10M+</div>
+                        <div class="text-gray-500 text-sm">Images Generated</div>
+                    </div>
+                    <div class="w-px h-12 bg-gray-700 hidden sm:block"></div>
+                    <div class="text-center">
+                        <div class="text-3xl font-bold gradient-text">500K+</div>
+                        <div class="text-gray-500 text-sm">Active Users</div>
+                    </div>
+                    <div class="w-px h-12 bg-gray-700 hidden sm:block"></div>
+                    <div class="text-center">
+                        <div class="text-3xl font-bold gradient-text">100%</div>
+                        <div class="text-gray-500 text-sm">Free to Use</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Scrolling Image Strip -->
+            <div class="w-full overflow-hidden mt-20 fade-in">
+                <div class="scroll-strip flex gap-6 w-max">
+                    <!-- First Set -->
+                    <div class="flex gap-6">
+                        <img src="https://image.pollinations.ai/prompt/cyberpunk%20city%20at%20night%20neon%20lights?width=400&height=300&seed=1&nologo=true" 
+                             alt="AI Art" class="w-64 h-48 object-cover rounded-2xl glow-primary">
+                        <img src="https://image.pollinations.ai/prompt/magical%20forest%20with%20glowing%20mushrooms?width=400&height=300&seed=2&nologo=true" 
+                             alt="AI Art" class="w-64 h-48 object-cover rounded-2xl glow-secondary">
+                        <img src="https://image.pollinations.ai/prompt/astronaut%20riding%20horse%20on%20mars?width=400&height=300&seed=3&nologo=true" 
+                             alt="AI Art" class="w-64 h-48 object-cover rounded-2xl glow-primary">
+                        <img src="https://image.pollinations.ai/prompt/japanese%20temple%20cherry%20blossom%20anime?width=400&height=300&seed=4&nologo=true" 
+                             alt="AI Art" class="w-64 h-48 object-cover rounded-2xl glow-secondary">
+                        <img src="https://image.pollinations.ai/prompt/steampunk%20airship%20flying%20castle?width=400&height=300&seed=5&nologo=true" 
+                             alt="AI Art" class="w-64 h-48 object-cover rounded-2xl glow-primary">
+                        <img src="https://image.pollinations.ai/prompt/underwater%20palace%20mermaids%20coral?width=400&height=300&seed=6&nologo=true" 
+                             alt="AI Art" class="w-64 h-48 object-cover rounded-2xl glow-secondary">
+                    </div>
+                    <!-- Duplicate for seamless loop -->
+                    <div class="flex gap-6">
+                        <img src="https://image.pollinations.ai/prompt/cyberpunk%20city%20at%20night%20neon%20lights?width=400&height=300&seed=1&nologo=true" 
+                             alt="AI Art" class="w-64 h-48 object-cover rounded-2xl glow-primary">
+                        <img src="https://image.pollinations.ai/prompt/magical%20forest%20with%20glowing%20mushrooms?width=400&height=300&seed=2&nologo=true" 
+                             alt="AI Art" class="w-64 h-48 object-cover rounded-2xl glow-secondary">
+                        <img src="https://image.pollinations.ai/prompt/astronaut%20riding%20horse%20on%20mars?width=400&height=300&seed=3&nologo=true" 
+                             alt="AI Art" class="w-64 h-48 object-cover rounded-2xl glow-primary">
+                        <img src="https://image.pollinations.ai/prompt/japanese%20temple%20cherry%20blossom%20anime?width=400&height=300&seed=4&nologo=true" 
+                             alt="AI Art" class="w-64 h-48 object-cover rounded-2xl glow-secondary">
+                        <img src="https://image.pollinations.ai/prompt/steampunk%20airship%20flying%20castle?width=400&height=300&seed=5&nologo=true" 
+                             alt="AI Art" class="w-64 h-48 object-cover rounded-2xl glow-primary">
+                        <img src="https://image.pollinations.ai/prompt/underwater%20palace%20mermaids%20coral?width=400&height=300&seed=6&nologo=true" 
+                             alt="AI Art" class="w-64 h-48 object-cover rounded-2xl glow-secondary">
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- ===== FEATURES SECTION ===== -->
+        <section id="features" class="py-32 px-6 relative z-10">
+            <div class="max-w-7xl mx-auto">
+                <div class="text-center mb-16 fade-in">
+                    <h2 class="text-4xl md:text-5xl font-bold mb-4">
+                        Why Choose <span class="gradient-text">Studio Maz</span>?
+                    </h2>
+                    <p class="text-xl text-gray-400 max-w-2xl mx-auto">
+                        Experience the future of creative imaging with our cutting-edge AI technology
+                    </p>
+                </div>
+                
+                <div class="grid md:grid-cols-3 gap-8">
+                    <!-- Feature 1 -->
+                    <div class="glass rounded-3xl p-8 hover:border-primary/50 transition-all duration-300 fade-in group">
+                        <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                            <i class="ph-fill ph-lightning text-3xl text-white"></i>
+                        </div>
+                        <h3 class="text-2xl font-bold mb-4">Lightning Fast</h3>
+                        <p class="text-gray-400 leading-relaxed">
+                            Generate stunning images in under 10 seconds. Our optimized AI pipeline ensures you never wait for creativity.
+                        </p>
+                        <ul class="mt-6 space-y-3">
+                            <li class="flex items-center gap-3 text-gray-300">
+                                <i class="ph-fill ph-check-circle text-primary"></i>
+                                Real-time generation
+                            </li>
+                            <li class="flex items-center gap-3 text-gray-300">
+                                <i class="ph-fill ph-check-circle text-primary"></i>
+                                No queue waiting
+                            </li>
+                            <li class="flex items-center gap-3 text-gray-300">
+                                <i class="ph-fill ph-check-circle text-primary"></i>
+                                Instant previews
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <!-- Feature 2 -->
+                    <div class="glass rounded-3xl p-8 hover:border-secondary/50 transition-all duration-300 fade-in group" style="transition-delay: 0.1s;">
+                        <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-secondary to-primary flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                            <i class="ph-fill ph-palette text-3xl text-white"></i>
+                        </div>
+                        <h3 class="text-2xl font-bold mb-4">Infinite Styles</h3>
+                        <p class="text-gray-400 leading-relaxed">
+                            From photorealistic to anime, 3D renders to oil paintings—unlock every artistic style imaginable.
+                        </p>
+                        <ul class="mt-6 space-y-3">
+                            <li class="flex items-center gap-3 text-gray-300">
+                                <i class="ph-fill ph-check-circle text-secondary"></i>
+                                50+ art styles
+                            </li>
+                            <li class="flex items-center gap-3 text-gray-300">
+                                <i class="ph-fill ph-check-circle text-secondary"></i>
+                                Custom modifiers
+                            </li>
+                            <li class="flex items-center gap-3 text-gray-300">
+                                <i class="ph-fill ph-check-circle text-secondary"></i>
+                                Style mixing
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <!-- Feature 3 -->
+                    <div class="glass rounded-3xl p-8 hover:border-primary/50 transition-all duration-300 fade-in group" style="transition-delay: 0.2s;">
+                        <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                            <i class="ph-fill ph-gift text-3xl text-white"></i>
+                        </div>
+                        <h3 class="text-2xl font-bold mb-4">100% Free</h3>
+                        <p class="text-gray-400 leading-relaxed">
+                            No credit cards, no subscriptions, no limits. Create as many images as you want, forever free.
+                        </p>
+                        <ul class="mt-6 space-y-3">
+                            <li class="flex items-center gap-3 text-gray-300">
+                                <i class="ph-fill ph-check-circle text-primary"></i>
+                                Unlimited generations
+                            </li>
+                            <li class="flex items-center gap-3 text-gray-300">
+                                <i class="ph-fill ph-check-circle text-primary"></i>
+                                Full resolution exports
+                            </li>
+                            <li class="flex items-center gap-3 text-gray-300">
+                                <i class="ph-fill ph-check-circle text-primary"></i>
+                                Commercial use allowed
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- ===== GALLERY SECTION ===== -->
+        <section id="gallery" class="py-32 px-6 relative z-10">
+            <div class="max-w-7xl mx-auto">
+                <div class="text-center mb-16 fade-in">
+                    <h2 class="text-4xl md:text-5xl font-bold mb-4">
+                        Explore the <span class="gradient-text">Gallery</span>
+                    </h2>
+                    <p class="text-xl text-gray-400 max-w-2xl mx-auto">
+                        Discover what others have created with Studio Maz
+                    </p>
+                </div>
+                
+                <div class="masonry-grid">
+                    <!-- Gallery Items -->
+                    <div class="masonry-item image-card relative rounded-2xl overflow-hidden cursor-pointer fade-in">
+                        <img src="https://image.pollinations.ai/prompt/ethereal%20goddess%20in%20space%20nebula%20colors%20divine%20beauty?width=600&height=800&seed=100&nologo=true" 
+                             alt="Gallery Image" class="w-full rounded-2xl">
+                        <div class="image-overlay absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent flex flex-col justify-end p-6">
+                            <p class="text-sm text-gray-300 mb-2">Prompt:</p>
+                            <p class="text-white font-medium">"Ethereal goddess in space nebula colors divine beauty"</p>
+                        </div>
+                    </div>
+                    
+                    <div class="masonry-item image-card relative rounded-2xl overflow-hidden cursor-pointer fade-in" style="transition-delay: 0.1s;">
+                        <img src="https://image.pollinations.ai/prompt/futuristic%20tokyo%20street%20rain%20neon%20signs%20cyberpunk?width=600&height=400&seed=101&nologo=true" 
+                             alt="Gallery Image" class="w-full rounded-2xl">
+                        <div class="image-overlay absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent flex flex-col justify-end p-6">
+                            <p class="text-sm text-gray-300 mb-2">Prompt:</p>
+                            <p class="text-white font-medium">"Futuristic Tokyo street rain neon signs cyberpunk"</p>
+                        </div>
+                    </div>
+                    
+                    <div class="masonry-item image-card relative rounded-2xl overflow-hidden cursor-pointer fade-in" style="transition-delay: 0.2s;">
+                        <img src="https://image.pollinations.ai/prompt/ancient%20dragon%20guarding%20treasure%20cave%20fantasy%20art?width=600&height=600&seed=102&nologo=true" 
+                             alt="Gallery Image" class="w-full rounded-2xl">
+                        <div class="image-overlay absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent flex flex-col justify-end p-6">
+                            <p class="text-sm text-gray-300 mb-2">Prompt:</p>
+                            <p class="text-white font-medium">"Ancient dragon guarding treasure cave fantasy art"</p>
+                        </div>
+                    </div>
+                    
+                    <div class="masonry-item image-card relative rounded-2xl overflow-hidden cursor-pointer fade-in" style="transition-delay: 0.15s;">
+                        <img src="https://image.pollinations.ai/prompt/beautiful%20anime%20girl%20sakura%20petals%20spring%20garden?width=600&height=750&seed=103&nologo=true" 
+                             alt="Gallery Image" class="w-full rounded-2xl">
+                        <div class="image-overlay absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent flex flex-col justify-end p-6">
+                            <p class="text-sm text-gray-300 mb-2">Prompt:</p>
+                            <p class="text-white font-medium">"Beautiful anime girl sakura petals spring garden"</p>
+                        </div>
+                    </div>
+                    
+                    <div class="masonry-item image-card relative rounded-2xl overflow-hidden cursor-pointer fade-in" style="transition-delay: 0.25s;">
+                        <img src="https://image.pollinations.ai/prompt/abandoned%20spaceship%20interior%20alien%20plants%20growing?width=600&height=450&seed=104&nologo=true" 
+                             alt="Gallery Image" class="w-full rounded-2xl">
+                        <div class="image-overlay absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent flex flex-col justify-end p-6">
+                            <p class="text-sm text-gray-300 mb-2">Prompt:</p>
+                            <p class="text-white font-medium">"Abandoned spaceship interior alien plants growing"</p>
+                        </div>
+                    </div>
+                    
+                    <div class="masonry-item image-card relative rounded-2xl overflow-hidden cursor-pointer fade-in" style="transition-delay: 0.3s;">
+                        <img src="https://image.pollinations.ai/prompt/mystical%20owl%20galaxy%20wings%20cosmic%20wisdom?width=600&height=600&seed=105&nologo=true" 
+                             alt="Gallery Image" class="w-full rounded-2xl">
+                        <div class="image-overlay absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent flex flex-col justify-end p-6">
+                            <p class="text-sm text-gray-300 mb-2">Prompt:</p>
+                            <p class="text-white font-medium">"Mystical owl galaxy wings cosmic wisdom"</p>
+                        </div>
+                    </div>
+                    
+                    <div class="masonry-item image-card relative rounded-2xl overflow-hidden cursor-pointer fade-in" style="transition-delay: 0.2s;">
+                        <img src="https://image.pollinations.ai/prompt/crystal%20palace%20floating%20clouds%20fantasy%20kingdom?width=600&height=500&seed=106&nologo=true" 
+                             alt="Gallery Image" class="w-full rounded-2xl">
+                        <div class="image-overlay absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent flex flex-col justify-end p-6">
+                            <p class="text-sm text-gray-300 mb-2">Prompt:</p>
+                            <p class="text-white font-medium">"Crystal palace floating clouds fantasy kingdom"</p>
+                        </div>
+                    </div>
+                    
+                    <div class="masonry-item image-card relative rounded-2xl overflow-hidden cursor-pointer fade-in" style="transition-delay: 0.35s;">
+                        <img src="https://image.pollinations.ai/prompt/robot%20samurai%20cherry%20blossom%20battlefield%20cinematic?width=600&height=700&seed=107&nologo=true" 
+                             alt="Gallery Image" class="w-full rounded-2xl">
+                        <div class="image-overlay absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent flex flex-col justify-end p-6">
+                            <p class="text-sm text-gray-300 mb-2">Prompt:</p>
+                            <p class="text-white font-medium">"Robot samurai cherry blossom battlefield cinematic"</p>
+                        </div>
+                    </div>
+                    
+                    <div class="masonry-item image-card relative rounded-2xl overflow-hidden cursor-pointer fade-in" style="transition-delay: 0.4s;">
+                        <img src="https://image.pollinations.ai/prompt/underwater%20city%20bioluminescent%20creatures%20coral%20architecture?width=600&height=450&seed=108&nologo=true" 
+                             alt="Gallery Image" class="w-full rounded-2xl">
+                        <div class="image-overlay absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent flex flex-col justify-end p-6">
+                            <p class="text-sm text-gray-300 mb-2">Prompt:</p>
+                            <p class="text-white font-medium">"Underwater city bioluminescent creatures coral architecture"</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="text-center mt-12 fade-in">
+                    <button onclick="openApp()" class="gradient-btn px-8 py-4 rounded-full font-bold text-white text-lg inline-flex items-center gap-3">
+                        <i class="ph-fill ph-plus-circle text-xl"></i>
+                        Create Your Own
+                    </button>
+                </div>
+            </div>
+        </section>
+        
+        <!-- ===== BLOG SECTION ===== -->
+        <section id="blog" class="py-32 px-6 relative z-10">
+            <div class="max-w-7xl mx-auto">
+                <div class="text-center mb-16 fade-in">
+                    <h2 class="text-4xl md:text-5xl font-bold mb-4">
+                        Latest from <span class="gradient-text">Our Blog</span>
+                    </h2>
+                    <p class="text-xl text-gray-400 max-w-2xl mx-auto">
+                        Tips, tutorials, and insights on AI art generation
+                    </p>
+                </div>
+                
+                <div class="grid md:grid-cols-3 gap-8">
+                    <!-- Blog Post 1 -->
+                    <article class="glass rounded-3xl overflow-hidden group fade-in">
+                        <div class="relative overflow-hidden">
+                            <img src="https://image.pollinations.ai/prompt/abstract%20ai%20neural%20network%20visualization%20blue%20purple?width=600&height=400&seed=200&nologo=true" 
+                                 alt="Blog Image" class="w-full h-56 object-cover transition-transform duration-500 group-hover:scale-110">
+                            <div class="absolute top-4 left-4 glass-light px-3 py-1 rounded-full text-xs font-semibold text-white">
+                                Tutorial
+                            </div>
+                        </div>
+                        <div class="p-6">
+                            <div class="flex items-center gap-4 text-sm text-gray-400 mb-4">
+                                <span class="flex items-center gap-1">
+                                    <i class="ph ph-calendar"></i>
+                                    Jan 15, 2025
+                                </span>
+                                <span class="flex items-center gap-1">
+                                    <i class="ph ph-clock"></i>
+                                    5 min read
+                                </span>
+                            </div>
+                            <h3 class="text-xl font-bold mb-3 group-hover:text-primary transition-colors">
+                                Mastering Prompt Engineering for AI Art
+                            </h3>
+                            <p class="text-gray-400 mb-4 line-clamp-3">
+                                Learn the secrets of crafting perfect prompts that generate exactly what you envision. From basic structure to advanced techniques.
+                            </p>
+                            <a href="#" class="inline-flex items-center gap-2 text-primary font-semibold hover:gap-4 transition-all">
+                                Read More
+                                <i class="ph ph-arrow-right"></i>
+                            </a>
+                        </div>
+                    </article>
+                    
+                    <!-- Blog Post 2 -->
+                    <article class="glass rounded-3xl overflow-hidden group fade-in" style="transition-delay: 0.1s;">
+                        <div class="relative overflow-hidden">
+                            <img src="https://image.pollinations.ai/prompt/different%20art%20styles%20collage%20anime%20realistic%203d?width=600&height=400&seed=201&nologo=true" 
+                                 alt="Blog Image" class="w-full h-56 object-cover transition-transform duration-500 group-hover:scale-110">
+                            <div class="absolute top-4 left-4 glass-light px-3 py-1 rounded-full text-xs font-semibold text-white">
+                                Guide
+                            </div>
+                        </div>
+                        <div class="p-6">
+                            <div class="flex items-center gap-4 text-sm text-gray-400 mb-4">
+                                <span class="flex items-center gap-1">
+                                    <i class="ph ph-calendar"></i>
+                                    Jan 12, 2025
+                                </span>
+                                <span class="flex items-center gap-1">
+                                    <i class="ph ph-clock"></i>
+                                    8 min read
+                                </span>
+                            </div>
+                            <h3 class="text-xl font-bold mb-3 group-hover:text-secondary transition-colors">
+                                Exploring 50+ AI Art Styles: A Complete Guide
+                            </h3>
+                            <p class="text-gray-400 mb-4 line-clamp-3">
+                                From photorealism to abstract, anime to oil paintings. Discover every style available and when to use them for best results.
+                            </p>
+                            <a href="#" class="inline-flex items-center gap-2 text-secondary font-semibold hover:gap-4 transition-all">
+                                Read More
+                                <i class="ph ph-arrow-right"></i>
+                            </a>
+                        </div>
+                    </article>
+                    
+                    <!-- Blog Post 3 -->
+                    <article class="glass rounded-3xl overflow-hidden group fade-in" style="transition-delay: 0.2s;">
+                        <div class="relative overflow-hidden">
+                            <img src="https://image.pollinations.ai/prompt/future%20of%20ai%20art%20holographic%20display%20technology?width=600&height=400&seed=202&nologo=true" 
+                                 alt="Blog Image" class="w-full h-56 object-cover transition-transform duration-500 group-hover:scale-110">
+                            <div class="absolute top-4 left-4 glass-light px-3 py-1 rounded-full text-xs font-semibold text-white">
+                                Insights
+                            </div>
+                        </div>
+                        <div class="p-6">
+                            <div class="flex items-center gap-4 text-sm text-gray-400 mb-4">
+                                <span class="flex items-center gap-1">
+                                    <i class="ph ph-calendar"></i>
+                                    Jan 10, 2025
+                                </span>
+                                <span class="flex items-center gap-1">
+                                    <i class="ph ph-clock"></i>
+                                    6 min read
+                                </span>
+                            </div>
+                            <h3 class="text-xl font-bold mb-3 group-hover:text-primary transition-colors">
+                                The Future of AI-Generated Art in 2025
+                            </h3>
+                            <p class="text-gray-400 mb-4 line-clamp-3">
+                                What's coming next in AI art? Video generation, 3D models, and more. A deep dive into emerging technologies and trends.
+                            </p>
+                            <a href="#" class="inline-flex items-center gap-2 text-primary font-semibold hover:gap-4 transition-all">
+                                Read More
+                                <i class="ph ph-arrow-right"></i>
+                            </a>
+                        </div>
+                    </article>
+                </div>
+            </div>
+        </section>
+        
+        <!-- ===== API/TRUST SECTION ===== -->
+        <section id="about" class="py-32 px-6 relative z-10">
+            <div class="max-w-7xl mx-auto">
+                <div class="grid lg:grid-cols-2 gap-16 items-center">
+                    <div class="fade-in">
+                        <div class="inline-flex items-center gap-2 glass-light px-4 py-2 rounded-full mb-6">
+                            <i class="ph-fill ph-code text-primary"></i>
+                            <span class="text-sm text-gray-300">Open API</span>
+                        </div>
+                        <h2 class="text-4xl md:text-5xl font-bold mb-6">
+                            Powered by <span class="gradient-text">Pollinations.ai</span>
+                        </h2>
+                        <p class="text-xl text-gray-400 mb-8 leading-relaxed">
+                            Studio Maz leverages the powerful Pollinations.ai API to generate stunning images. This open-source API provides free access to state-of-the-art image generation models including Flux and Turbo.
+                        </p>
+                        
+                        <div class="space-y-4">
+                            <div class="flex items-start gap-4">
+                                <div class="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center flex-shrink-0">
+                                    <i class="ph-fill ph-shield-check text-primary text-xl"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold mb-1">Free & Open</h4>
+                                    <p class="text-gray-400 text-sm">No API keys required. Completely free to use.</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-4">
+                                <div class="w-10 h-10 rounded-xl bg-secondary/20 flex items-center justify-center flex-shrink-0">
+                                    <i class="ph-fill ph-rocket text-secondary text-xl"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold mb-1">Multiple Models</h4>
+                                    <p class="text-gray-400 text-sm">Access to Flux, Turbo, and more cutting-edge models.</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-4">
+                                <div class="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center flex-shrink-0">
+                                    <i class="ph-fill ph-globe text-primary text-xl"></i>
+                                </div>
+                                <div>
+                                    <h4 class="font-semibold mb-1">Global CDN</h4>
+                                    <p class="text-gray-400 text-sm">Fast delivery worldwide with intelligent caching.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Sign Up Card Instead of Code -->
+                    <div class="fade-in" style="transition-delay: 0.2s;">
+                        <div class="glass rounded-3xl p-8 text-center">
+                            <div class="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center mx-auto mb-6">
+                                <i class="ph-fill ph-user-plus text-4xl text-white"></i>
+                            </div>
+                            <h3 class="text-2xl font-bold mb-4">Get Free Daily Credits</h3>
+                            <p class="text-gray-400 mb-6">
+                                Sign up for a free Pollinations.ai account to get unlimited access without rate limits. No credit card required!
+                            </p>
+                            <a href="https://enter.pollinations.ai" target="_blank" 
+                               class="gradient-btn px-8 py-4 rounded-full font-bold text-white text-lg inline-flex items-center gap-3 w-full justify-center">
+                                <i class="ph-fill ph-sign-in text-xl"></i>
+                                Sign Up Free
+                            </a>
+                            <p class="text-gray-500 text-sm mt-4">
+                                <i class="ph ph-lock-simple"></i> No rate limits with free account
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- ===== MEGA FOOTER ===== -->
+        <footer class="relative z-10 border-t border-white/10">
+            <div class="max-w-7xl mx-auto px-6 py-16">
+                <div class="grid md:grid-cols-2 lg:grid-cols-5 gap-12 mb-12">
+                    <!-- Brand Column -->
+                    <div class="lg:col-span-2">
+                        <a href="#" class="flex items-center gap-3 mb-6">
+                            <div class="w-12 h-12 rounded-xl gradient-btn flex items-center justify-center">
+                                <i class="ph-fill ph-magic-wand text-white text-2xl"></i>
+                            </div>
+                            <span class="text-2xl font-bold gradient-text">Studio Maz</span>
+                        </a>
+                        <p class="text-gray-400 mb-6 max-w-sm">
+                            Transform your imagination into stunning visuals with our cutting-edge AI image generation platform. Free, fast, and unlimited.
+                        </p>
+                        
+                        <!-- Newsletter -->
+                        <div class="glass-light rounded-2xl p-4">
+                            <p class="text-sm font-semibold mb-3">Subscribe to our newsletter</p>
+                            <div class="flex gap-2">
+                                <input type="email" placeholder="Enter your email" 
+                                       class="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-500 focus:border-primary">
+                                <button class="gradient-btn px-4 py-2.5 rounded-xl font-semibold text-white">
+                                    <i class="ph-fill ph-paper-plane-tilt text-lg"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Quick Links -->
+                    <div>
+                        <h4 class="font-bold text-lg mb-4">Product</h4>
+                        <ul class="space-y-3">
+                            <li><a href="#features" class="text-gray-400 hover:text-white transition-colors">Features</a></li>
+                            <li><a href="#gallery" class="text-gray-400 hover:text-white transition-colors">Gallery</a></li>
+                            <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Pricing</a></li>
+                            <li><a href="https://enter.pollinations.ai" target="_blank" class="text-gray-400 hover:text-white transition-colors">API</a></li>
+                            <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Changelog</a></li>
+                        </ul>
+                    </div>
+                    
+                    <!-- Resources -->
+                    <div>
+                        <h4 class="font-bold text-lg mb-4">Resources</h4>
+                        <ul class="space-y-3">
+                            <li><a href="#blog" class="text-gray-400 hover:text-white transition-colors">Blog</a></li>
+                            <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Documentation</a></li>
+                            <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Tutorials</a></li>
+                            <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Community</a></li>
+                            <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Help Center</a></li>
+                        </ul>
+                    </div>
+                    
+                    <!-- Company -->
+                    <div>
+                        <h4 class="font-bold text-lg mb-4">Company</h4>
+                        <ul class="space-y-3">
+                            <li><a href="#about" class="text-gray-400 hover:text-white transition-colors">About Us</a></li>
+                            <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Careers</a></li>
+                            <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Privacy Policy</a></li>
+                            <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Terms of Service</a></li>
+                            <li><a href="#" class="text-gray-400 hover:text-white transition-colors">Contact</a></li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <!-- Footer Bottom -->
+                <div class="border-t border-white/10 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
+                    <p class="text-gray-500 text-sm">
+                        © 2025 Studio Maz. All rights reserved. Powered by Pollinations.ai
+                    </p>
+                    <div class="flex items-center gap-4">
+                        <a href="#" class="w-10 h-10 glass-light rounded-xl flex items-center justify-center text-gray-400 hover:text-white hover:bg-primary/20 transition-all">
+                            <i class="ph-fill ph-x-logo text-lg"></i>
+                        </a>
+                        <a href="#" class="w-10 h-10 glass-light rounded-xl flex items-center justify-center text-gray-400 hover:text-white hover:bg-primary/20 transition-all">
+                            <i class="ph-fill ph-github-logo text-lg"></i>
+                        </a>
+                        <a href="#" class="w-10 h-10 glass-light rounded-xl flex items-center justify-center text-gray-400 hover:text-white hover:bg-primary/20 transition-all">
+                            <i class="ph-fill ph-discord-logo text-lg"></i>
+                        </a>
+                        <a href="#" class="w-10 h-10 glass-light rounded-xl flex items-center justify-center text-gray-400 hover:text-white hover:bg-primary/20 transition-all">
+                            <i class="ph-fill ph-instagram-logo text-lg"></i>
+                        </a>
+                        <a href="#" class="w-10 h-10 glass-light rounded-xl flex items-center justify-center text-gray-400 hover:text-white hover:bg-primary/20 transition-all">
+                            <i class="ph-fill ph-youtube-logo text-lg"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+    
+    <!-- ========== APP INTERFACE ========== -->
+    <div id="app" class="app-container fixed inset-0 bg-background z-[100]">
+        <!-- Rate Limit Banner -->
+        <div id="rateLimitBanner" class="hidden fixed top-0 left-0 right-0 z-[60] rate-limit-banner px-4 py-3">
+            <div class="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                    <i class="ph-fill ph-warning text-yellow-400 text-xl"></i>
+                    <span class="text-sm text-white">
+                        <strong>Rate limit reached!</strong> Sign up for free unlimited access.
+                    </span>
+                </div>
+                <a href="https://enter.pollinations.ai" target="_blank" 
+                   class="gradient-btn px-4 py-2 rounded-full text-sm font-semibold text-white flex items-center gap-2">
+                    <i class="ph-fill ph-user-plus"></i>
+                    Get Free Credits
+                </a>
+            </div>
+        </div>
+
+        <!-- Back to Landing Button -->
+        <button onclick="closeApp()" class="fixed top-4 left-4 z-50 glass-light px-4 py-2 rounded-full flex items-center gap-2 text-gray-300 hover:text-white transition-colors">
+            <i class="ph ph-arrow-left"></i>
+            <span class="hidden sm:inline">Back to Home</span>
+        </button>
+        
+        <div class="flex h-full">
+            <!-- ===== SIDEBAR ===== -->
+            <aside id="sidebar" class="w-80 h-full glass border-r border-white/10 flex flex-col overflow-hidden transition-transform duration-300 fixed lg:relative z-40">
+                <div class="p-6 border-b border-white/10">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="w-10 h-10 rounded-xl gradient-btn flex items-center justify-center">
+                            <i class="ph-fill ph-magic-wand text-white text-xl"></i>
+                        </div>
+                        <span class="text-xl font-bold gradient-text">Studio Maz</span>
+                    </div>
+                    
+                    <!-- Mobile Close Button -->
+                    <button onclick="toggleSidebar()" class="lg:hidden absolute top-4 right-4 p-2 text-gray-400 hover:text-white">
+                        <i class="ph ph-x text-xl"></i>
+                    </button>
+                </div>
+                
+                <div class="flex-1 overflow-y-auto p-6 space-y-6">
+                    <!-- Aspect Ratio -->
+                    <div>
+                        <label class="block text-sm font-semibold mb-3 text-gray-300">
+                            <i class="ph ph-frame-corners mr-2"></i>Aspect Ratio
+                        </label>
+                        <div class="grid grid-cols-3 gap-2">
+                            <button onclick="setAspectRatio('1:1', 1024, 1024)" data-ratio="1:1"
+                                    class="aspect-btn glass-light px-3 py-3 rounded-xl text-center hover:bg-white/10 transition-all active">
+                                <div class="w-8 h-8 border-2 border-current rounded mx-auto mb-1"></div>
+                                <span class="text-xs">Square</span>
+                            </button>
+                            <button onclick="setAspectRatio('16:9', 1280, 720)" data-ratio="16:9"
+                                    class="aspect-btn glass-light px-3 py-3 rounded-xl text-center hover:bg-white/10 transition-all">
+                                <div class="w-10 h-6 border-2 border-current rounded mx-auto mb-1"></div>
+                                <span class="text-xs">Wide</span>
+                            </button>
+                            <button onclick="setAspectRatio('9:16', 720, 1280)" data-ratio="9:16"
+                                    class="aspect-btn glass-light px-3 py-3 rounded-xl text-center hover:bg-white/10 transition-all">
+                                <div class="w-5 h-8 border-2 border-current rounded mx-auto mb-1"></div>
+                                <span class="text-xs">Portrait</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Style Dropdown -->
+                    <div>
+                        <label class="block text-sm font-semibold mb-3 text-gray-300">
+                            <i class="ph ph-palette mr-2"></i>Style Preset
+                        </label>
+                        <select id="styleSelect" 
+                                class="w-full glass-light border border-white/10 rounded-xl px-4 py-3 text-white bg-transparent cursor-pointer">
+                            <option value="">None (Raw Prompt)</option>
+                            <option value="cinematic lighting, dramatic shadows, movie scene">Cinematic</option>
+                            <option value="anime style, vibrant colors, detailed">Anime</option>
+                            <option value="3d render, octane render, realistic">3D Render</option>
+                            <option value="digital art, concept art, detailed illustration">Digital Art</option>
+                            <option value="oil painting, impressionist, canvas texture">Oil Painting</option>
+                            <option value="watercolor, soft colors, artistic">Watercolor</option>
+                            <option value="pixel art, retro, 8-bit style">Pixel Art</option>
+                            <option value="photorealistic, ultra detailed, photography">Photorealistic</option>
+                            <option value="fantasy art, magical, ethereal">Fantasy</option>
+                            <option value="cyberpunk, neon lights, futuristic">Cyberpunk</option>
+                            <option value="minimalist, simple, clean design">Minimalist</option>
+                            <option value="steampunk, victorian, brass and gears">Steampunk</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Advanced Settings Toggle -->
+                    <div>
+                        <button onclick="toggleAdvanced()" class="flex items-center justify-between w-full text-sm font-semibold text-gray-300 mb-3">
+                            <span><i class="ph ph-sliders-horizontal mr-2"></i>Advanced Settings</span>
+                            <i class="ph ph-caret-down transition-transform" id="advancedIcon"></i>
+                        </button>
+                        
+                        <div id="advancedSettings" class="space-y-4 hidden">
+                            <!-- Model Selection -->
+                            <div>
+                                <label class="block text-xs text-gray-400 mb-2">Model</label>
+                                <select id="modelSelect" 
+                                        class="w-full glass-light border border-white/10 rounded-xl px-4 py-2.5 text-white bg-transparent text-sm">
+                                    <option value="flux">Flux (High Quality)</option>
+                                    <option value="turbo">Turbo (Fast)</option>
+                                    <option value="flux-realism">Flux Realism</option>
+                                    <option value="flux-anime">Flux Anime</option>
+                                    <option value="flux-3d">Flux 3D</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Seed Input -->
+                            <div>
+                                <label class="block text-xs text-gray-400 mb-2">Seed (Optional)</label>
+                                <div class="flex gap-2">
+                                    <input type="number" id="seedInput" placeholder="Random" 
+                                           class="flex-1 glass-light border border-white/10 rounded-xl px-4 py-2.5 text-white bg-transparent text-sm placeholder-gray-500">
+                                    <button onclick="randomSeed()" class="glass-light px-3 py-2.5 rounded-xl hover:bg-white/10 transition-colors tooltip" data-tip="Random">
+                                        <i class="ph ph-shuffle text-lg"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Negative Prompt -->
+                            <div>
+                                <label class="block text-xs text-gray-400 mb-2">Negative Prompt</label>
+                                <textarea id="negativePrompt" rows="2" placeholder="What to avoid..."
+                                          class="w-full glass-light border border-white/10 rounded-xl px-4 py-2.5 text-white bg-transparent text-sm placeholder-gray-500 resize-none"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Sign Up CTA -->
+                    <div class="glass-light rounded-2xl p-4 border border-primary/30">
+                        <div class="flex items-center gap-3 mb-2">
+                            <i class="ph-fill ph-crown text-yellow-400 text-xl"></i>
+                            <span class="font-semibold text-sm">No Rate Limits</span>
+                        </div>
+                        <p class="text-xs text-gray-400 mb-3">Sign up for free unlimited access to all features.</p>
+                        <a href="https://enter.pollinations.ai" target="_blank" 
+                           class="gradient-btn px-4 py-2 rounded-lg text-sm font-semibold text-white flex items-center justify-center gap-2 w-full">
+                            <i class="ph-fill ph-sign-in"></i>
+                            Get Free Credits
+                        </a>
+                    </div>
+                    
+                    <!-- History Section -->
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <label class="text-sm font-semibold text-gray-300">
+                                <i class="ph ph-clock-counter-clockwise mr-2"></i>History
+                            </label>
+                            <button onclick="clearHistory()" class="text-xs text-gray-500 hover:text-red-400 transition-colors">
+                                Clear All
+                            </button>
+                        </div>
+                        <div id="historyGrid" class="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto">
+                            <!-- History items will be dynamically added here -->
+                            <div class="text-center text-gray-500 text-xs col-span-3 py-4">
+                                No history yet
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+            
+            <!-- Mobile Sidebar Toggle -->
+            <button onclick="toggleSidebar()" id="sidebarToggle" class="fixed bottom-24 left-4 z-50 lg:hidden gradient-btn w-12 h-12 rounded-full flex items-center justify-center shadow-lg">
+                <i class="ph ph-sidebar text-xl text-white"></i>
+            </button>
+            
+            <!-- ===== MAIN CANVAS ===== -->
+            <main class="flex-1 flex flex-col h-full overflow-hidden">
+                <!-- Canvas Area -->
+                <div class="flex-1 flex items-center justify-center p-4 lg:p-8 overflow-auto">
+                    <div id="canvasContainer" class="relative w-full max-w-3xl aspect-square glass rounded-3xl overflow-hidden group">
+                        <!-- Placeholder State -->
+                        <div id="placeholder" class="absolute inset-0 flex flex-col items-center justify-center text-center p-8">
+                            <div class="w-24 h-24 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center mb-6">
+                                <i class="ph-fill ph-image text-5xl gradient-text"></i>
+                            </div>
+                            <h3 class="text-2xl font-bold mb-2">Ready to Create</h3>
+                            <p class="text-gray-400 max-w-sm">
+                                Enter a prompt below and click Generate to create your AI masterpiece
+                            </p>
+                        </div>
+                        
+                        <!-- Loading State -->
+                        <div id="loadingState" class="absolute inset-0 flex flex-col items-center justify-center hidden">
+                            <div class="spinner mb-6"></div>
+                            <p class="text-gray-300 font-medium">Generating your image...</p>
+                            <p class="text-gray-500 text-sm mt-2" id="loadingText">This may take a few seconds</p>
+                        </div>
+                        
+                        <!-- Error State -->
+                        <div id="errorState" class="absolute inset-0 flex flex-col items-center justify-center text-center p-8 hidden">
+                            <div class="w-20 h-20 rounded-full bg-red-500/20 flex items-center justify-center mb-6">
+                                <i class="ph-fill ph-warning text-4xl text-red-400"></i>
+                            </div>
+                            <h3 class="text-xl font-bold mb-2 text-red-400">Rate Limit Reached</h3>
+                            <p class="text-gray-400 max-w-sm mb-6">
+                                You've hit the anonymous tier limit. Sign up for free to get unlimited access!
+                            </p>
+                            <a href="https://enter.pollinations.ai" target="_blank" 
+                               class="gradient-btn px-6 py-3 rounded-full font-semibold text-white flex items-center gap-2">
+                                <i class="ph-fill ph-user-plus text-lg"></i>
+                                Sign Up Free
+                            </a>
+                        </div>
+                        
+                        <!-- Generated Image -->
+                        <img id="generatedImage" src="" alt="Generated Image" class="w-full h-full object-contain hidden">
+                        
+                        <!-- Image Overlay Actions -->
+                        <div id="imageActions" class="image-overlay absolute inset-0 bg-black/50 flex items-center justify-center gap-4 hidden">
+                            <button onclick="downloadImage()" class="glass-light px-6 py-3 rounded-full font-semibold text-white flex items-center gap-2 hover:bg-white/20 transition-colors">
+                                <i class="ph-fill ph-download-simple text-xl"></i>
+                                Download
+                            </button>
+                            <button onclick="shareImage()" class="glass-light px-6 py-3 rounded-full font-semibold text-white flex items-center gap-2 hover:bg-white/20 transition-colors">
+                                <i class="ph-fill ph-share-network text-xl"></i>
+                                Share
+                            </button>
+                            <button onclick="regenerate()" class="glass-light px-6 py-3 rounded-full font-semibold text-white flex items-center gap-2 hover:bg-white/20 transition-colors">
+                                <i class="ph-fill ph-arrows-clockwise text-xl"></i>
+                                Regenerate
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- ===== INPUT BAR ===== -->
+                <div class="p-4 lg:p-6">
+                    <div class="max-w-4xl mx-auto glass rounded-2xl p-4 glow-primary">
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <div class="flex-1 relative">
+                                <input type="text" id="promptInput" placeholder="Describe your imagination..." 
+                                       class="w-full bg-white/5 border border-white/10 rounded-xl px-5 py-4 text-white placeholder-gray-500 text-lg pr-24"
+                                       onkeypress="if(event.key === 'Enter') generateImage()">
+                                <button onclick="enhancePrompt()" class="absolute right-2 top-1/2 -translate-y-1/2 glass-light px-3 py-2 rounded-lg text-sm font-medium text-primary hover:bg-primary/20 transition-colors flex items-center gap-1">
+                                    <i class="ph-fill ph-sparkle"></i>
+                                    <span class="hidden sm:inline">Enhance</span>
+                                </button>
+                            </div>
+                            <button id="generateBtn" onclick="generateImage()" 
+                                    class="gradient-btn px-8 py-4 rounded-xl font-bold text-white text-lg flex items-center justify-center gap-2 min-w-[160px]">
+                                <i class="ph-fill ph-magic-wand text-xl"></i>
+                                Generate
+                            </button>
+                        </div>
+                        <div class="flex items-center justify-between mt-3 text-sm text-gray-500">
+                            <div class="flex items-center gap-4">
+                                <span id="currentSettings">1024 × 1024 • Flux</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <i class="ph ph-info"></i>
+                                <span>Press Enter to generate</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+    
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-8 left-1/2 -translate-x-1/2 glass px-6 py-3 rounded-full text-white font-medium z-[200] opacity-0 transition-opacity pointer-events-none flex items-center gap-3">
+        <i class="ph-fill ph-check-circle text-green-400 text-xl" id="toastIcon"></i>
+        <span id="toastMessage">Success!</span>
+    </div>
+    
+    <script>
+        // ===== STATE MANAGEMENT =====
+        let currentWidth = 1024;
+        let currentHeight = 1024;
+        let currentImageUrl = '';
+        let currentPrompt = '';
+        let isGenerating = false;
+        let rateLimitHit = false;
+        
+        // ===== LANDING PAGE FUNCTIONS =====
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobileMenu');
+            const icon = document.getElementById('menuIcon');
+            menu.classList.toggle('open');
+            icon.classList.toggle('ph-list');
+            icon.classList.toggle('ph-x');
+        }
+        
+        // Fade in on scroll
+        function handleScrollAnimations() {
+            const elements = document.querySelectorAll('.fade-in');
+            elements.forEach(el => {
+                const rect = el.getBoundingClientRect();
+                const isVisible = rect.top < window.innerHeight - 100;
+                if (isVisible) {
+                    el.classList.add('visible');
+                }
+            });
+        }
+        
+        window.addEventListener('scroll', handleScrollAnimations);
+        window.addEventListener('load', handleScrollAnimations);
+        
+        // ===== APP FUNCTIONS =====
+        function openApp() {
+            document.getElementById('landing').classList.add('hidden');
+            document.getElementById('app').classList.add('active');
+            document.body.style.overflow = 'hidden';
+            loadHistory();
+        }
+        
+        function closeApp() {
+            document.getElementById('landing').classList.remove('hidden');
+            document.getElementById('app').classList.remove('active');
+            document.body.style.overflow = '';
+        }
+        
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('-translate-x-full');
+        }
+        
+        function setAspectRatio(ratio, width, height) {
+            currentWidth = width;
+            currentHeight = height;
+            
+            // Update buttons
+            document.querySelectorAll('.aspect-btn').forEach(btn => {
+                btn.classList.remove('active', 'bg-primary/20', 'border-primary');
+            });
+            document.querySelector(`[data-ratio="${ratio}"]`).classList.add('active', 'bg-primary/20', 'border-primary');
+            
+            // Update canvas aspect ratio
+            const canvas = document.getElementById('canvasContainer');
+            if (ratio === '1:1') {
+                canvas.style.aspectRatio = '1/1';
+            } else if (ratio === '16:9') {
+                canvas.style.aspectRatio = '16/9';
+            } else {
+                canvas.style.aspectRatio = '9/16';
+            }
+            
+            updateSettings();
+        }
+        
+        function toggleAdvanced() {
+            const settings = document.getElementById('advancedSettings');
+            const icon = document.getElementById('advancedIcon');
+            settings.classList.toggle('hidden');
+            icon.classList.toggle('rotate-180');
+        }
+        
+        function randomSeed() {
+            document.getElementById('seedInput').value = Math.floor(Math.random() * 999999);
+        }
+        
+        function updateSettings() {
+            const model = document.getElementById('modelSelect').value;
+            document.getElementById('currentSettings').textContent = `${currentWidth} × ${currentHeight} • ${model.charAt(0).toUpperCase() + model.slice(1)}`;
+        }
+        
+        document.getElementById('modelSelect')?.addEventListener('change', updateSettings);
+        
+        // ===== ENHANCE PROMPT =====
+        function enhancePrompt() {
+            const input = document.getElementById('promptInput');
+            const enhancements = [
+                '8k resolution',
+                'masterpiece',
+                'highly detailed',
+                'professional',
+                'award winning',
+                'dramatic lighting',
+                'sharp focus'
+            ];
+            
+            if (input.value.trim()) {
+                const randomEnhancements = enhancements
+                    .sort(() => Math.random() - 0.5)
+                    .slice(0, 3)
+                    .join(', ');
+                input.value = `${input.value.trim()}, ${randomEnhancements}`;
+                showToast('Prompt enhanced!', 'success');
+            }
+        }
+        
+        // ===== GENERATE IMAGE =====
+        async function generateImage() {
+            const promptInput = document.getElementById('promptInput');
+            const prompt = promptInput.value.trim();
+            
+            if (!prompt) {
+                showToast('Please enter a prompt', 'error');
+                return;
+            }
+            
+            if (isGenerating) return;
+            isGenerating = true;
+            
+            // Get settings
+            const style = document.getElementById('styleSelect').value;
+            const model = document.getElementById('modelSelect').value;
+            const seed = document.getElementById('seedInput').value || Math.floor(Math.random() * 999999);
+            const negativePrompt = document.getElementById('negativePrompt')?.value || '';
+            
+            // Build final prompt
+            let finalPrompt = prompt;
+            if (style) {
+                finalPrompt = `${prompt}, ${style}`;
+            }
+            if (negativePrompt) {
+                finalPrompt = `${finalPrompt} --no ${negativePrompt}`;
+            }
+            
+            // Update UI
+            showLoading();
+            
+            // Build URL
+            const encodedPrompt = encodeURIComponent(finalPrompt);
+            const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${currentWidth}&height=${currentHeight}&seed=${seed}&model=${model}&nologo=true`;
+            
+            currentImageUrl = imageUrl;
+            currentPrompt = prompt;
+            
+            // Load image
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            
+            img.onload = function() {
+                showImage(imageUrl);
+                saveToHistory(imageUrl, prompt);
+                isGenerating = false;
+                rateLimitHit = false;
+                document.getElementById('rateLimitBanner').classList.add('hidden');
+            };
+            
+            img.onerror = function() {
+                // Check if it's a rate limit error
+                rateLimitHit = true;
+                showRateLimitError();
+                isGenerating = false;
+            };
+            
+            img.src = imageUrl;
+        }
+        
+        function regenerate() {
+            document.getElementById('seedInput').value = Math.floor(Math.random() * 999999);
+            generateImage();
+        }
+        
+        // ===== UI STATE FUNCTIONS =====
+        function showLoading() {
+            document.getElementById('placeholder').classList.add('hidden');
+            document.getElementById('loadingState').classList.remove('hidden');
+            document.getElementById('errorState').classList.add('hidden');
+            document.getElementById('generatedImage').classList.add('hidden');
+            document.getElementById('imageActions').classList.add('hidden');
+            
+            const btn = document.getElementById('generateBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<div class="spinner w-6 h-6 border-2"></div> Generating...';
+            
+            // Animate loading text
+            const loadingTexts = [
+                'Analyzing your prompt...',
+                'Creating composition...',
+                'Adding details...',
+                'Finalizing image...'
+            ];
+            let i = 0;
+            const interval = setInterval(() => {
+                if (!isGenerating) {
+                    clearInterval(interval);
+                    return;
+                }
+                document.getElementById('loadingText').textContent = loadingTexts[i % loadingTexts.length];
+                i++;
+            }, 2000);
+        }
+        
+        function showImage(url) {
+            document.getElementById('placeholder').classList.add('hidden');
+            document.getElementById('loadingState').classList.add('hidden');
+            document.getElementById('errorState').classList.add('hidden');
+            
+            const img = document.getElementById('generatedImage');
+            img.src = url;
+            img.classList.remove('hidden');
+            
+            document.getElementById('imageActions').classList.remove('hidden');
+            
+            const btn = document.getElementById('generateBtn');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="ph-fill ph-magic-wand text-xl"></i> Generate';
+        }
+        
+        function showPlaceholder() {
+            document.getElementById('placeholder').classList.remove('hidden');
+            document.getElementById('loadingState').classList.add('hidden');
+            document.getElementById('errorState').classList.add('hidden');
+            document.getElementById('generatedImage').classList.add('hidden');
+            document.getElementById('imageActions').classList.add('hidden');
+            
+            const btn = document.getElementById('generateBtn');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="ph-fill ph-magic-wand text-xl"></i> Generate';
+        }
+        
+        function showRateLimitError() {
+            document.getElementById('placeholder').classList.add('hidden');
+            document.getElementById('loadingState').classList.add('hidden');
+            document.getElementById('errorState').classList.remove('hidden');
+            document.getElementById('generatedImage').classList.add('hidden');
+            document.getElementById('imageActions').classList.add('hidden');
+            document.getElementById('rateLimitBanner').classList.remove('hidden');
+            
+            const btn = document.getElementById('generateBtn');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="ph-fill ph-magic-wand text-xl"></i> Generate';
+            
+            showToast('Rate limit reached. Please sign up for free access!', 'error');
+        }
+        
+        // ===== HISTORY FUNCTIONS =====
+        function saveToHistory(url, prompt) {
+            let history = JSON.parse(localStorage.getItem('studiomaz_history') || '[]');
+            
+            // Add new item at beginning
+            history.unshift({
+                url: url,
+                prompt: prompt,
+                timestamp: Date.now()
+            });
+            
+            // Keep only last 20 items
+            history = history.slice(0, 20);
+            
+            localStorage.setItem('studiomaz_history', JSON.stringify(history));
+            loadHistory();
+        }
+        
+        function loadHistory() {
+            const history = JSON.parse(localStorage.getItem('studiomaz_history') || '[]');
+            const grid = document.getElementById('historyGrid');
+            
+            if (history.length === 0) {
+                grid.innerHTML = '<div class="text-center text-gray-500 text-xs col-span-3 py-4">No history yet</div>';
+                return;
+            }
+            
+            grid.innerHTML = history.map((item, index) => `
+                <div class="history-item relative rounded-lg overflow-hidden cursor-pointer aspect-square" 
+                     onclick="loadFromHistory(${index})">
+                    <img src="${item.url}" alt="${item.prompt}" class="w-full h-full object-cover">
+                    <div class="absolute inset-0 bg-black/50 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <i class="ph-fill ph-eye text-white text-xl"></i>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function loadFromHistory(index) {
+            const history = JSON.parse(localStorage.getItem('studiomaz_history') || '[]');
+            const item = history[index];
+            
+            if (item) {
+                document.getElementById('promptInput').value = item.prompt;
+                currentImageUrl = item.url;
+                currentPrompt = item.prompt;
+                showImage(item.url);
+                showToast('Loaded from history', 'success');
+            }
+        }
+        
+        function clearHistory() {
+            if (confirm('Are you sure you want to clear all history?')) {
+                localStorage.removeItem('studiomaz_history');
+                loadHistory();
+                showToast('History cleared', 'success');
+            }
+        }
+        
+        // ===== DOWNLOAD & SHARE =====
+        async function downloadImage() {
+            if (!currentImageUrl) return;
+            
+            try {
+                showToast('Preparing download...', 'info');
+                
+                const response = await fetch(currentImageUrl);
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `studiomaz-${Date.now()}.png`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                
+                showToast('Image downloaded!', 'success');
+            } catch (error) {
+                // Fallback: open in new tab
+                window.open(currentImageUrl, '_blank');
+                showToast('Opening image in new tab', 'info');
+            }
+        }
+        
+        function shareImage() {
+            if (!currentImageUrl) return;
+            
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Check out my AI art!',
+                    text: `Created with Studio Maz: "${currentPrompt}"`,
+                    url: currentImageUrl
+                }).then(() => {
+                    showToast('Shared successfully!', 'success');
+                }).catch(() => {});
+            } else {
+                // Fallback: copy URL
+                navigator.clipboard.writeText(currentImageUrl).then(() => {
+                    showToast('Image URL copied to clipboard!', 'success');
+                });
+            }
+        }
+        
+        // ===== TOAST NOTIFICATION =====
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toastIcon');
+            const messageEl = document.getElementById('toastMessage');
+            
+            messageEl.textContent = message;
+            
+            if (type === 'success') {
+                icon.className = 'ph-fill ph-check-circle text-green-400 text-xl';
+            } else if (type === 'error') {
+                icon.className = 'ph-fill ph-x-circle text-red-400 text-xl';
+            } else {
+                icon.className = 'ph-fill ph-info text-blue-400 text-xl';
+            }
+            
+            toast.classList.remove('opacity-0');
+            toast.classList.add('opacity-100');
+            
+            setTimeout(() => {
+                toast.classList.remove('opacity-100');
+                toast.classList.add('opacity-0');
+            }, 3000);
+        }
+        
+        // ===== INITIALIZE =====
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initial animations
+            setTimeout(handleScrollAnimations, 100);
+            
+            // Set initial settings display
+            updateSettings();
+            
+            // Handle mobile sidebar
+            if (window.innerWidth < 1024) {
+                document.getElementById('sidebar').classList.add('-translate-x-full');
+            }
+            
+            // Sample prompts for demo
+            const samplePrompts = [
+                "A mystical dragon flying over a crystal mountain at sunset",
+                "Cyberpunk samurai in neon-lit Tokyo streets",
+                "Enchanted forest with glowing mushrooms and fairies",
+                "Futuristic space station orbiting a gas giant",
+                "Beautiful mermaid in an underwater palace"
+            ];
+            
+            // Randomly set a sample prompt as placeholder inspiration
+            const randomPrompt = samplePrompts[Math.floor(Math.random() * samplePrompts.length)];
+            document.getElementById('promptInput').placeholder = `Try: "${randomPrompt}"`;
+        });
+        
+        // ===== KEYBOARD SHORTCUTS =====
+        document.addEventListener('keydown', (e) => {
+            // Escape to close app
+            if (e.key === 'Escape' && document.getElementById('app').classList.contains('active')) {
+                closeApp();
+            }
+            
+            // Ctrl+Enter to generate
+            if (e.ctrlKey && e.key === 'Enter') {
+                generateImage();
+            }
+        });
+        
+        // ===== WINDOW RESIZE HANDLER =====
+        window.addEventListener('resize', () => {
+            const sidebar = document.getElementById('sidebar');
+            if (window.innerWidth >= 1024) {
+                sidebar.classList.remove('-translate-x-full');
+            } else if (!sidebar.classList.contains('-translate-x-full')) {
+                sidebar.classList.add('-translate-x-full');
+            }
+        });
+    </script>
+</body>
+</html>
